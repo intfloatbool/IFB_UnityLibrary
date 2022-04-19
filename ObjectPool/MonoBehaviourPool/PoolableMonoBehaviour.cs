@@ -36,7 +36,8 @@ namespace IFB_Lib.ObjectPool.MonoBehaviourPool
 
         public virtual void DestroyCompletely()
         {
-            Destroy(gameObject);
+            if(gameObject)
+                Destroy(gameObject);
         }
         
         protected virtual void OnDestroy()
