@@ -9,10 +9,14 @@ namespace IFB_Lib.ObjectPool.MonoBehaviourPool
     {
         [SerializeField] private List<GameObject> _gamePrefabs;
         private Dictionary<string, GameObject> _gamePrefabsDict = new Dictionary<string, GameObject>();
+        public IReadOnlyDictionary<string, GameObject> GamePrefabsDict => _gamePrefabsDict;
+        
         private Dictionary<string, List<IPoolableObject>> _currentObjectsDict = new Dictionary<string, List<IPoolableObject>>();
         private Dictionary<string, Transform> _rootObjectsDict = new Dictionary<string, Transform>();
 
         private Predicate<IPoolableObject> _destroyPredicate;
+
+        [SerializeField] private Transform _concreteParent;
 
 #if UNITY_EDITOR
         [Space] 
@@ -40,6 +44,11 @@ namespace IFB_Lib.ObjectPool.MonoBehaviourPool
         private void Awake()
         {
             _gamePrefabsDict = _gamePrefabs.ToDictionary(gp => gp.name);
+        }
+
+        public void AddPrefab(GameObject prefab)
+        {
+            _gamePrefabsDict.Add(prefab.name, prefab);
         }
 
         public T GetObjectFromPool<T>() where T : class, IPoolableObject
@@ -70,22 +79,29 @@ namespace IFB_Lib.ObjectPool.MonoBehaviourPool
             if (targetObject == null)
             {
                 Transform root = default;
-                if (!_rootObjectsDict.TryGetValue(typeName, out root))
+                if (!_concreteParent)
                 {
-                    var newRoot = new GameObject($"RootFor-[ {typeName} ]");
-                    newRoot.transform.parent = transform;
-                    newRoot.transform.localPosition = Vector3.zero;
-                    newRoot.transform.localRotation = Quaternion.identity;
+                    if (!_rootObjectsDict.TryGetValue(typeName, out root))
+                    {
+                        var newRoot = new GameObject($"RootFor-[ {typeName} ]");
+                        newRoot.transform.parent = transform;
+                        newRoot.transform.localPosition = Vector3.zero;
+                        newRoot.transform.localRotation = Quaternion.identity;
                     
-                    _rootObjectsDict[typeName] = newRoot.transform;
+                        _rootObjectsDict[typeName] = newRoot.transform;
+                        root = newRoot.transform;
+                    }
                 }
-                var instance = Instantiate(targetPrefab, _rootObjectsDict[typeName]);
+                else
+                {
+                    root = _concreteParent;
+                }
+                
+                var instance = Instantiate(targetPrefab, root);
                 targetObject = instance.GetComponent<T>();
                 _currentObjectsDict[typeName].Add(targetObject);
             }
 
-            targetObject.Show();
-            
             return targetObject;
 
         }
